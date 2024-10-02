@@ -1,0 +1,28 @@
+[project]
+name = "research_bot"
+version = "0.0.0"
+authors = [
+    { name = "Pranav", email = "pranavraj575@gmail.com" },
+]
+description = "generating novel thingies"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    'torch',
+    'numpy',
+]
+[project.optional-dependencies]
+games = [
+    'matplotlib'
+]
+
+[project.urls]
+Homepage = "https://github.com/pranavraj575/research_bot"
+
+[tool.setuptools.packages.find]
+exclude = ["data*", "temp*"]
