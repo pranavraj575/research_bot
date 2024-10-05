@@ -163,9 +163,24 @@ def event_catcher(rng, diagrams, reverse=True):
     return events
 
 
+def default_radius_bounds(dataset,
+                          min_radius=None,
+                          max_radius=None,
+                          ):
+    if min_radius is None:
+        # then do double average distance to nearest neighbor
+        dperm2all = np.linalg.norm(np.expand_dims(dataset,0) - np.expand_dims(dataset,1), axis=-1)
+        temp = dperm2all + np.diag(np.nan*np.ones(len(dperm2all)))
+        min_radius = 2*np.mean(np.nanmin(temp, axis=1))
+    if max_radius is None:
+        # then do double min radius
+        max_radius = 2*min_radius
+    return min_radius, max_radius
+
+
 def phase_transitions(dataset,
-                      min_radius=None,
-                      max_radius=None,
+                      min_radius,
+                      max_radius,
                       max_cohomo=4,
                       check_simplices=True,
                       ):
@@ -177,13 +192,6 @@ def phase_transitions(dataset,
     result = ripser(dataset, do_cocycles=False, maxdim=max_cohomo)
     dperm2all = result['dperm2all']
     diagrams = result['dgms']
-    if min_radius is None:
-        # then do double average distance to nearest neighbor
-        temp = dperm2all + np.diag(np.nan*np.ones(len(dperm2all)))
-        min_radius = 2*np.mean(np.nanmin(temp, axis=1))
-    if max_radius is None:
-        # then do double min radius
-        max_radius = 2*min_radius
     for event, degree, birth in event_catcher(rng=(min_radius, max_radius),
                                               diagrams=diagrams,
                                               reverse=False,
@@ -203,6 +211,11 @@ def barycentric_additions(dataset,
                           max_cohomo=4,
                           check_simplices=True,
                           ):
+    if min_radius is None or max_radius is None:
+        min_radius, max_radius = default_radius_bounds(dataset=dataset,
+                                                       min_radius=min_radius,
+                                                       max_radius=max_radius,
+                                                       )
     for event, simplex in phase_transitions(dataset=dataset,
                                             min_radius=min_radius,
                                             max_radius=max_radius,
@@ -211,6 +224,41 @@ def barycentric_additions(dataset,
                                             ):
         barycenter = np.mean(dataset[simplex,], axis=0)
         yield barycenter
+
+
+def stitch_together(dataset,
+                    min_radius=None,
+                    max_radius=None,
+                    max_cohomo=4,
+                    check_simplices=True,
+                    ):
+    if min_radius is None or max_radius is None:
+        min_radius, max_radius = default_radius_bounds(dataset=dataset,
+                                                       min_radius=min_radius,
+                                                       max_radius=max_radius,
+                                                       )
+    # stitches dataset together until no cohomology is born/dies on specified range
+    additions = []
+    for event, simplex in phase_transitions(dataset=dataset,
+                                            min_radius=min_radius,
+                                            max_radius=max_radius,
+                                            max_cohomo=max_cohomo,
+                                            check_simplices=check_simplices,
+                                            ):
+        barycenter = np.mean(dataset[simplex,], axis=0)
+        additions.append(barycenter)
+    if not additions:
+        return
+    for b in additions:
+        yield b
+    dataset = np.concatenate((dataset, np.stack(additions, axis=0)), axis=0)
+    for thing in stitch_together(dataset=dataset,
+                                 min_radius=min_radius,
+                                 max_radius=max_radius,
+                                 max_cohomo=max_cohomo,
+                                 check_simplices=check_simplices,
+                                 ):
+        yield thing
 
 
 if __name__ == '__main__':
