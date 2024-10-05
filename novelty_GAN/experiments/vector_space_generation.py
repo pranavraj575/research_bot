@@ -1,20 +1,25 @@
 import torch
 import matplotlib.pyplot as plt
+from collections import deque
+import copy
 
 from novelty_GAN.networks.ffn import FFN
 
-rand_dim = 100
+rand_dim = 10
 dim = 2
 
 generator = FFN(input_dim=rand_dim,
                 output_dim=dim,
-                hidden_layers=[128,128],
+                hidden_layers=[64,64 ],
                 )
 discriminator = FFN(input_dim=dim,
                     output_dim=1,
                     hidden_layers=[64],
                     output_activation=torch.nn.Sigmoid,
                     )
+
+discriminators = deque(maxlen=20)
+
 optim_gen = torch.optim.Adam(generator.parameters())
 optim_disc = torch.optim.Adam(discriminator.parameters())
 
@@ -29,10 +34,10 @@ dataset = torch.rand(N, dim)
 
 noise = .01
 # generate random points on a line
-#vec = torch.tensor([[1, 1.]])
-#dataset = torch.rand(N, 1)*vec + torch.normal(mean=0, std=noise, size=(N, dim))
+# vec = torch.tensor([[1, 1.]])
+# dataset = torch.rand(N, 1)*vec + torch.normal(mean=0, std=noise, size=(N, dim))
 
-sample = 10
+sample = 100
 epochs = 5000
 for i in range(epochs):
     optim_gen.zero_grad()
@@ -51,14 +56,21 @@ for i in range(epochs):
                                 target=target)
     discrim_loss.backward()
     optim_disc.step()
+    discriminators.append(copy.deepcopy(discriminator.state_dict()))
 
     gen_target = torch.ones((sample, 1))
-    crit = torch.nn.BCELoss()
-    gen_loss = crit.forward(input=discriminator.forward(generated),
-                            target=gen_target,
-                            )
-
+    gen_loss = 0
+    for state_dict in discriminators:
+        temp_disc = copy.deepcopy(discriminator)
+        temp_disc.load_state_dict(state_dict=state_dict)
+        crit = torch.nn.BCELoss()
+        gen_loss += crit.forward(input=temp_disc.forward(generated),
+                                 target=gen_target,
+                                 )
+    gen_loss = gen_loss/len(discriminators)
     differences = torch.linalg.norm(generated.unsqueeze(1) - dataset.unsqueeze(0), dim=-1)
+    #differences=torch.topk(k=k,input=differences).values
+
     diff_loss = torch.mean(novelty_radius/differences)
 
     overall_loss = scaling[0]*gen_loss + scaling[1]*diff_loss

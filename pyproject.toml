@@ -15,6 +15,7 @@ classifiers = [
 dependencies = [
     'torch',
     'numpy',
+    'ripser',
 ]
 [project.optional-dependencies]
 games = [
