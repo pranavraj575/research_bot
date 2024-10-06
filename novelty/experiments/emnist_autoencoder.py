@@ -17,12 +17,14 @@ transform = transforms.Compose([
     transforms.ToTensor(),
     # transforms.Normalize((0.1307,), (0.3081,))
 ])
-dataset1 = datasets.MNIST(dataset_dir, train=True, download=True,
-                          transform=transform,
-                          )
-dataset2 = datasets.MNIST(dataset_dir, train=False,
-                          transform=transform,
-                          )
+dataset1 = datasets.EMNIST(dataset_dir, train=True, download=True,
+                           transform=transform,
+                           split='balanced',
+                           )
+dataset2 = datasets.EMNIST(dataset_dir, train=False,
+                           transform=transform,
+                           split='balanced',
+                           )
 
 train_kwargs = {'batch_size': 128,
                 'shuffle': True,
@@ -39,11 +41,14 @@ temp_dir = os.path.join(DIR, 'temp')
 if not os.path.exists(temp_dir):
     os.makedirs(temp_dir)
 
-for img, label in datasets.MNIST(dataset_dir, train=True, download=False):
+temp = 4
+for img, label in datasets.EMNIST(dataset_dir, train=True, download=False, split='balanced'):
     img: Image.Image
     print(label)
     img.save(os.path.join(temp_dir, 'test.png'))
-    break
+    temp -= 1
+    if temp < 0:
+        break
 
 guess_dir = os.path.join(temp_dir, 'guess')
 if not os.path.exists(guess_dir):
@@ -79,8 +84,8 @@ for inp, _ in test_loader:
 # using fixed encoder for classification, also grab the encodings of each point
 
 print('training classification with fixed encoder')
-points = [[] for _ in range(10)]
-head = FFN(input_dim=aut.embedding_dim, output_dim=10, hidden_layers=[64, 64], device=device)
+points = [[] for _ in range(47)]
+head = FFN(input_dim=aut.embedding_dim, output_dim=47, hidden_layers=[64, 64], device=device)
 optim = torch.optim.Adam(head.parameters())
 start = time.time()
 for inp, labels in train_loader:
@@ -114,24 +119,3 @@ for i, pts in enumerate(points):
 plt.legend()
 plt.savefig(os.path.join(temp_dir, '2d_embeddings.png'))
 plt.close()
-
-## CLASSIFICATION TEST, NO USE OF DECODER
-print('training only classification using encoding')
-aut = MNIST_Autoencoder(embedding_dim=10)
-optim = torch.optim.Adam(aut.parameters())
-start = time.time()
-for inp, labels in train_loader:
-    optim.zero_grad()
-    enc, dec = aut.forward(inp)
-    crit = torch.nn.CrossEntropyLoss()
-    loss = crit.forward(input=enc, target=labels)
-    loss.backward()
-    optim.step()
-    print(loss.item(), end='\r')
-print()
-print('train time:', time.time() - start)
-for inp, labels in test_loader:
-    enc, dec = aut.forward(inp)
-    guesses = torch.argmax(enc, dim=1)
-    print('success prop:', (torch.sum(guesses == labels)/len(guesses)).item())
-    break
