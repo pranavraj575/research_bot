@@ -2,6 +2,8 @@ from torchvision import datasets, transforms
 import torch, os, sys
 from torch import nn
 from PIL import Image
+from novelty.networks.ffn import FFN
+import matplotlib.pyplot as plt
 
 DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.join(os.getcwd(), sys.argv[0]))))
 
@@ -45,8 +47,8 @@ class Autoencoder(nn.Module):
                  decoder_channels=None,
                  decoder_kernels=None,
                  ):
-
         super().__init__()
+        self.embedding_dim = embedding_dim
         if encoder_channels is None:
             encoder_channels = [4, 8]
         if encoder_kernels is None:
@@ -103,12 +105,14 @@ class Autoencoder(nn.Module):
         dec = self.decoder(enc)
         return enc, dec
 
-guess_dir=os.path.join(temp_dir,'guess')
+
+guess_dir = os.path.join(temp_dir, 'guess')
 if not os.path.exists(guess_dir):
     os.makedirs(guess_dir)
 
 ## RECONSTRUCTION TEST
-aut = Autoencoder(embedding_dim=128)
+print('training reconstruction')
+aut = Autoencoder(embedding_dim=2)
 optim = torch.optim.Adam(aut.parameters())
 for inp, labels in train_loader:
     optim.zero_grad()
@@ -117,25 +121,58 @@ for inp, labels in train_loader:
     loss = crit.forward(input=dec, target=inp)
     loss.backward()
     optim.step()
-    print(loss.item())
-
+    print(loss.item(), end='\r')
+print()
 for inp, _ in test_loader:
     _, dec = aut.forward(inp)
 
-    trans=transforms.ToPILImage()
-    for i,(guess,real) in enumerate(zip(dec,inp)):
-        guess,real=trans(guess),trans(real)
-        guess.save(os.path.join(guess_dir,str(i)+'_guess.png'))
+    trans = transforms.ToPILImage()
+    for i, (guess, real) in enumerate(zip(dec, inp)):
+        guess, real = trans(guess), trans(real)
+        guess.save(os.path.join(guess_dir, str(i) + '_guess.png'))
         real.save(os.path.join(guess_dir, str(i) + '_real.png'))
     break
+
+# using fixed encoder for classification, also grab the encodings of each point
+
+print('training classification with fixed encoder')
+points = [[] for _ in range(10)]
+head = FFN(input_dim=aut.embedding_dim, output_dim=10, hidden_layers=[64, 64])
+optim = torch.optim.Adam(head.parameters())
+
+for inp, labels in train_loader:
+    optim.zero_grad()
+    enc, _ = aut.forward(inp)
+    logits = head.forward(enc)
+
+    crit = nn.CrossEntropyLoss()
+    loss = crit.forward(input=logits, target=labels)
+    loss.backward()
+    optim.step()
+    print(loss.item(), end='\r')
+    for vec, label in zip(enc, labels.view(-1, 1)):
+        points[label].append(vec.detach())
+print()
+for inp, labels in test_loader:
+    enc, dec = aut.forward(inp)
+    logits = head.forward(enc)
+    guesses = torch.argmax(logits, dim=1)
+    print('success prop:', (torch.sum(guesses == labels)/len(guesses)).item())
+    break
+
+print([len(t) for t in points])
+for i, pts in enumerate(points):
+    x = [p[0] for p in pts]
+    y = [p[1] for p in pts]
+    plt.scatter(x, y, marker='.', label=i)
+plt.legend()
+plt.savefig(os.path.join(temp_dir,'2d_embeddings.png'))
+plt.close()
 
 ## CLASSIFICATION TEST, NO USE OF DECODER
 aut = Autoencoder(embedding_dim=10)
 optim = torch.optim.Adam(aut.parameters())
-for img, label in dataset1:
-    enc, dec = aut.forward(img.unsqueeze(0))
-    print(enc)
-    break
+
 for inp, labels in train_loader:
     optim.zero_grad()
     enc, dec = aut.forward(inp)
@@ -143,8 +180,8 @@ for inp, labels in train_loader:
     loss = crit.forward(input=enc, target=labels)
     loss.backward()
     optim.step()
-    print(loss.item())
-
+    print(loss.item(), end='\r')
+print()
 for inp, labels in test_loader:
     enc, dec = aut.forward(inp)
     guesses = torch.argmax(enc, dim=1)
