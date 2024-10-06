@@ -18,8 +18,8 @@ dependencies = [
     'ripser',
 ]
 [project.optional-dependencies]
-games = [
-    'matplotlib'
+mnist = [
+    'torchvision'
 ]
 
 [project.urls]
