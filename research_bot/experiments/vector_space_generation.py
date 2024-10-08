@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from collections import deque
 import copy
 
-from novelty.networks.ffn import FFN
+from research_bot.networks.ffn import FFN
 
 rand_dim = 10
 dim = 2

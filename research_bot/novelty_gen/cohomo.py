@@ -3,6 +3,7 @@ from ripser import ripser
 from persim import plot_diagrams
 from matplotlib import pyplot as plt
 import itertools
+from research_bot.novelty_gen.novelty import Novelty
 
 
 def drawLineColored(X, C):
@@ -122,7 +123,7 @@ def get_event_simplices(event, dperm2all, degree=1, tol=1e-8):
     gets simplices that form during an event (i.e. the birth or death of cohomology)
     Args:
         event: scalar, the time that the event happens
-        dperm2all: distance matrix, returned by utils
+        dperm2all: distance matrix, returned by novelty_gen
         degree: degree of simplex we should return (should usually be 1)
             i.e. if we are looking for a line that caused the death of 0-cohomology, degree would be 1
             k-simplices cause death of (k-1)-cohomology and birth of k-cohomology
@@ -169,9 +170,9 @@ def default_radius_bounds(dataset,
                           ):
     if min_radius is None:
         # then do double average distance to nearest neighbor
-        dperm2all = np.linalg.norm(np.expand_dims(dataset,0) - np.expand_dims(dataset,1), axis=-1)
+        dperm2all = np.linalg.norm(np.expand_dims(dataset, 0) - np.expand_dims(dataset, 1), axis=-1)
         temp = dperm2all + np.diag(np.nan*np.ones(len(dperm2all)))
-        min_radius = 2*np.mean(np.nanmin(temp, axis=1))
+        min_radius = 1.5*np.mean(np.nanmin(temp, axis=1))
     if max_radius is None:
         # then do double min radius
         max_radius = 2*min_radius
@@ -230,7 +231,8 @@ def stitch_together(dataset,
                     min_radius=None,
                     max_radius=None,
                     max_cohomo=4,
-                    check_simplices=True,
+                    check_simplices=False,
+                    depth=float('inf'),
                     ):
     if min_radius is None or max_radius is None:
         min_radius, max_radius = default_radius_bounds(dataset=dataset,
@@ -251,19 +253,27 @@ def stitch_together(dataset,
         return
     for b in additions:
         yield b
+    if depth <= 1:
+        return
     dataset = np.concatenate((dataset, np.stack(additions, axis=0)), axis=0)
     for thing in stitch_together(dataset=dataset,
                                  min_radius=min_radius,
                                  max_radius=max_radius,
                                  max_cohomo=max_cohomo,
                                  check_simplices=check_simplices,
+                                 depth=depth - 1,
                                  ):
         yield thing
 
 
+class HomologyNovelty(Novelty):
+    def _generate_novelties(self, n, dataset):
+        pass
+
+
 if __name__ == '__main__':
     # resolution
-    # lower radius is 'novelty', basically saying ignore points in smaller resolution than this
+    # lower radius is 'research_bot', basically saying ignore points in smaller resolution than this
     # upper radius is 'coherence', basically saying dont get too crazy now
     min_radius = .5
     max_radius = np.inf

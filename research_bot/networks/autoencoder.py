@@ -19,6 +19,12 @@ class Autoencoder(nn.Module):
         dec = self.decoder(enc)
         return enc, dec
 
+    def decode(self, enc):
+        return self.decoder(enc)
+
+    def encode(self, x):
+        return self.encoder(x)
+
 
 class MNISTEncoder(nn.Module):
     def __init__(self,

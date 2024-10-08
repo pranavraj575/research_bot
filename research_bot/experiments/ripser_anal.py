@@ -2,7 +2,7 @@ import numpy as np
 import torch, os, sys, time
 import matplotlib.pyplot as plt
 
-from novelty.utils.cohomo import barycentric_additions, stitch_together, default_radius_bounds
+from research_bot.novelty_gen.cohomo import barycentric_additions, stitch_together, default_radius_bounds
 
 show = False
 DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.join(os.getcwd(), sys.argv[0]))))
@@ -58,7 +58,7 @@ if show:
 plt.close()
 
 from ripser import ripser
-from novelty.utils.cohomo import plot_diagrams
+from research_bot.novelty_gen.cohomo import plot_diagrams
 
 result = ripser(dataset, do_cocycles=False)
 diagrams = result['dgms']

@@ -3,9 +3,9 @@ import time, torch, os, sys
 
 from PIL import Image
 
-from novelty.networks.ffn import FFN
+from research_bot.networks.ffn import FFN
 import matplotlib.pyplot as plt
-from novelty.networks.autoencoder import MNIST_Autoencoder
+from research_bot.networks.autoencoder import MNIST_Autoencoder
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -35,7 +35,7 @@ test_kwargs = {'batch_size': 128,
                }
 train_loader = torch.utils.data.DataLoader(dataset1, **train_kwargs)
 test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
-temp_dir = os.path.join(DIR, 'temp')
+temp_dir = os.path.join(DIR, 'temp', 'mnist')
 if not os.path.exists(temp_dir):
     os.makedirs(temp_dir)
 
