@@ -35,6 +35,8 @@ class Novelty:
         Args:
             n: number of points to generate
             dataset: dataset to use
+        Returns:
+            (n,D) where D is the dimension of points
         """
         dim = dataset.shape[1]
         low = torch.min(dataset, dim=0, keepdim=True).values
@@ -51,10 +53,9 @@ class Novelty:
         if self.dataset is None:
             self.set_dataset(dataset=additions)
         else:
-            self.dataset = torch.cat((self.dataset, additions), dim=0)
-            self.N, self.dim = self.dataset.shape
+            self.set_dataset(torch.cat((self.dataset, additions), dim=0))
 
-    def train(self):
+    def train(self, *args, **kwargs):
         pass
 
 
@@ -63,7 +64,7 @@ if __name__ == '__main__':
 
     torch.random.manual_seed(69)
     n = Novelty(torch.rand(30, 2))
-    additions=n.generate_novelties(3)
+    additions = n.generate_novelties(3)
 
     plt.scatter(n.dataset[:, 0], n.dataset[:, 1])
     plt.scatter(additions[:, 0], additions[:, 1])
